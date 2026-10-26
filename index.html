@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototipo IPTV Web</title>
+    <!-- Librería para procesar el video HLS -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { 
+            display: flex; flex-direction: column; background: #0f172a; color: white; 
+            margin: 0; height: 100vh; font-family: system-ui, sans-serif; 
+        }
+        #player-container { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
+        video { width: 100%; max-height: 100%; object-fit: contain; }
+        #sidebar { height: 40vh; overflow-y: auto; background: #1e293b; padding: 10px; border-top: 2px solid #334155; }
+        .channel-btn { 
+            display: block; width: 100%; padding: 15px; margin-bottom: 8px; 
+            background: #334155; color: white; border: none; border-radius: 8px; 
+            font-size: 16px; font-weight: bold; text-align: left; cursor: pointer; 
+        }
+        .channel-btn:active, .channel-btn:focus { background: #3b82f6; outline: none; }
+    </style>
+</head>
+<body>
+
+    <div id="player-container">
+        <video id="video" controls autoplay></video>
+    </div>
+
+    <div id="sidebar">
+        <h3 style="margin-top: 0; padding-left: 5px;">Canales (Prueba)</h3>
+        <div id="channel-list">Cargando lista M3U...</div>
+    </div>
+
+    <script>
+        // Lista filtrada para no saturar el DOM en la prueba móvil
+        const M3U_URL = 'https://iptv-org.github.io/iptv/countries/ec.m3u';
+
+        async function loadChannels() {
+            try {
+                const response = await fetch(M3U_URL);
+                const text = await response.text();
+                parseM3U(text);
+            } catch (error) {
+                document.getElementById('channel-list').innerHTML = '<p>Error cargando lista. (Posible bloqueo CORS temporal)</p>';
+            }
+        }
+
+        function parseM3U(text) {
+            const lines = text.split('\n');
+            const channels = [];
+            let currentChannel = {};
+
+            for (let line of lines) {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const parts = line.split(',');
+                    currentChannel.name = parts[parts.length - 1]; // Extrae el nombre tras la última coma
+                } else if (line.startsWith('http') && line.includes('.m3u8')) {
+                    currentChannel.url = line;
+                    channels.push(currentChannel);
+                    currentChannel = {}; 
+                }
+            }
+            renderChannels(channels);
+        }
+
+        function renderChannels(channels) {
+            const list = document.getElementById('channel-list');
+            list.innerHTML = '';
+            channels.forEach(channel => {
+                const btn = document.createElement('button');
+                btn.className = 'channel-btn';
+                btn.textContent = channel.name;
+                btn.onclick = () => playChannel(channel.url);
+                list.appendChild(btn);
+            });
+        }
+
+        function playChannel(url) {
+            const video = document.getElementById('video');
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Soporte nativo para iOS/Safari
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+            }
+        }
+
+        // Iniciar
+        loadChannels();
+    </script>
+</body>
+</html>
