@@ -3,18 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPTV Pro UI</title>
+    <title>IPTV Pro - Edición Zafiro</title>
+    <!-- Librería de reproducción HLS -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Librería de iconos (FontAwesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --panel-bg: #151b2b;
-            --accent: #3b82f6;
-            --text: #f8fafc;
+            /* Paleta de colores Azul Satinado */
+            --bg-dark: #070b14;
+            --panel-bg: linear-gradient(180deg, #0f172a 0%, #080f1d 100%);
+            --card-bg: linear-gradient(145deg, #16233d, #0d1627);
+            --accent-blue: #3b82f6;
+            --accent-satin: #60a5fa;
+            --text-main: #f8fafc;
             --text-muted: #94a3b8;
+            --glow: 0 0 15px rgba(59, 130, 246, 0.4);
         }
+        
         body { 
-            margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text); 
+            margin: 0; padding: 0; background-color: var(--bg-dark); color: var(--text-main); 
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             display: flex; height: 100vh; overflow: hidden; user-select: none;
         }
@@ -22,48 +30,83 @@
         /* Contenedor del Reproductor */
         #player-wrapper {
             flex: 1; background: #000; display: flex; flex-direction: column; position: relative;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
         }
         video { 
             width: 100%; height: 100%; object-fit: contain; outline: none; background: #000;
         }
 
-        /* Panel de Canales */
+        /* Menú Lateral (Diseño Satinado) */
         #sidebar { 
-            width: 350px; background-color: var(--panel-bg); display: flex; flex-direction: column;
-            border-left: 1px solid #1e293b; box-shadow: -5px 0 15px rgba(0,0,0,0.5); z-index: 10;
+            width: 380px; background: var(--panel-bg); display: flex; flex-direction: column;
+            border-left: 1px solid rgba(59, 130, 246, 0.2); box-shadow: -10px 0 30px rgba(0,0,0,0.8); z-index: 10;
         }
         .header {
-            padding: 20px; border-bottom: 1px solid #1e293b;
+            padding: 25px 20px; border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+            background: linear-gradient(90deg, rgba(15,23,42,1) 0%, rgba(30,58,138,0.3) 100%);
         }
-        .header h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }
-        .header p { margin: 5px 0 0 0; font-size: 13px; color: var(--text-muted); }
+        .header h2 { 
+            margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px;
+            text-shadow: var(--glow); color: var(--accent-satin);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .header p { margin: 8px 0 0 0; font-size: 13px; color: var(--text-muted); }
         
         #channel-grid {
-            flex: 1; overflow-y: auto; padding: 15px; display: grid; grid-template-columns: 1fr; gap: 10px;
+            flex: 1; overflow-y: auto; padding: 15px; display: grid; grid-template-columns: 1fr; gap: 12px;
         }
         
-        /* Ocultar barra de scroll para un look TV */
-        #channel-grid::-webkit-scrollbar { width: 6px; }
-        #channel-grid::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        /* Ocultar barra de scroll para un look TV fluido */
+        #channel-grid::-webkit-scrollbar { width: 4px; }
+        #channel-grid::-webkit-scrollbar-thumb { background: var(--accent-blue); border-radius: 4px; }
 
-        /* Tarjetas de Canales */
+        /* Tarjetas de Canales y VOD */
         .channel-card { 
-            background: #1e293b; border-radius: 12px; padding: 16px; border: 2px solid transparent;
-            cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center;
+            background: var(--card-bg); border-radius: 12px; padding: 16px; 
+            border: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: flex; align-items: center; gap: 15px; position: relative; overflow: hidden;
         }
+        /* Efecto brillo al pasar el foco */
+        .channel-card::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            transition: 0.5s;
+        }
+        .channel-card:hover::after, .channel-card:focus::after { left: 100%; }
+        
         .channel-card:hover, .channel-card:focus {
-            background: #253247; border-color: var(--accent); transform: scale(1.02); outline: none;
+            background: rgba(30, 58, 138, 0.4); border-color: var(--accent-satin); 
+            transform: translateX(-5px) scale(1.02); outline: none; box-shadow: var(--glow);
         }
         .channel-card.active {
-            border-color: var(--accent); background: rgba(59, 130, 246, 0.15);
+            border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.2);
+            border-left: 4px solid var(--accent-satin);
         }
         
+        /* Iconos dinámicos */
+        .card-icon {
+            font-size: 20px; color: var(--accent-blue);
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.3); border-radius: 50%; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .channel-card.active .card-icon { color: #fff; background: var(--accent-blue); box-shadow: var(--glow); }
+
         .channel-info { flex: 1; overflow: hidden; }
         .channel-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .channel-group { font-size: 12px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .channel-group { 
+            font-size: 11px; color: var(--accent-satin); margin-top: 6px; 
+            text-transform: uppercase; letter-spacing: 1px; font-weight: 600; 
+        }
 
-        /* Loader */
-        #loader { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+        #loader { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 18px; }
+
+        /* Adaptación Responsiva */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #player-wrapper { flex: none; height: 35vh; }
+            #sidebar { width: 100%; height: 65vh; border-left: none; border-top: 1px solid rgba(59, 130, 246, 0.3); }
+        }
     </style>
 </head>
 <body>
@@ -74,17 +117,17 @@
 
     <div id="sidebar">
         <div class="header">
-            <h2>TV Carlos</h2>
-            <p>Repositorio: Free-TV</p>
+            <h2><i class="fa-solid fa-play"></i> IPTV Pro</h2>
+            <p>Conectado al servidor Xtream Codes</p>
         </div>
         <div id="channel-grid">
-            <div id="loader">Cargando la parrilla de programación...</div>
+            <div id="loader"><i class="fa-solid fa-circle-notch fa-spin"></i> Cargando contenido...</div>
         </div>
     </div>
 
     <script>
-        // Nueva URL Maestra de Free-TV
-        const M3U_URL = 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8';
+        // URL de la lista con el parámetro de compatibilidad 'output=m3u8'
+        const M3U_URL = 'http://line.dndnscloud.ru/get.php?username=130ac073a2&password=dbdd4a0b97cb&type=m3u_plus&output=m3u8';
         let hlsInstance = null;
 
         async function loadChannels() {
@@ -93,7 +136,12 @@
                 const text = await response.text();
                 parseM3U(text);
             } catch (error) {
-                document.getElementById('channel-grid').innerHTML = '<div id="loader" style="color:#ef4444;">Error de red. Verifica conexión o CORS.</div>';
+                document.getElementById('channel-grid').innerHTML = 
+                    `<div id="loader" style="color:#ef4444;">
+                        <i class="fa-solid fa-triangle-exclamation"></i><br><br>
+                        Error de red por bloqueo HTTPS (CORS).<br><br>
+                        Para probarlo en tu laptop, haz doble clic en el archivo index.html para abrirlo como archivo local, no uses el enlace de Vercel.
+                    </div>`;
             }
         }
 
@@ -105,21 +153,27 @@
             for (let line of lines) {
                 line = line.trim();
                 if (line.startsWith('#EXTINF:')) {
-                    // Extraer grupo si existe (group-title="Noticias")
+                    // Extraer grupo (categoría)
                     const groupMatch = line.match(/group-title="([^"]+)"/);
                     if (groupMatch) currentChannel.group = groupMatch[1];
                     
-                    // Extraer nombre (lo que está después de la última coma)
+                    // Extraer nombre del canal o película
                     const parts = line.split(',');
                     currentChannel.name = parts[parts.length - 1].trim();
-                } else if (line.startsWith('http') && line.includes('.m3u8')) {
+                } else if (line.startsWith('http')) { 
                     currentChannel.url = line;
-                    channels.push({...currentChannel}); // Guardar clon
-                    currentChannel = { group: 'General' }; // Reiniciar
+                    
+                    // Detección automática: ¿Es Película/Serie o Canal en Vivo?
+                    const urlLower = line.toLowerCase();
+                    currentChannel.isVod = urlLower.includes('.mp4') || urlLower.includes('.mkv') || urlLower.includes('.avi') || urlLower.includes('/movie/') || urlLower.includes('/series/');
+                    
+                    channels.push({...currentChannel});
+                    currentChannel = { group: 'General' }; // Reiniciar objeto
                 }
             }
-            // Para la prueba, renderizamos solo los primeros 100 para no saturar el DOM móvil
-            renderChannels(channels.slice(0, 100)); 
+            
+            // Limitamos a 300 resultados para que el navegador no se congele durante la prueba
+            renderChannels(channels.slice(0, 300)); 
         }
 
         function renderChannels(channels) {
@@ -129,9 +183,15 @@
             channels.forEach((channel, index) => {
                 const card = document.createElement('div');
                 card.className = 'channel-card';
-                card.tabIndex = index + 1; // Para que funcione con las flechas del control de la TV
+                card.tabIndex = index + 1;
+                
+                // Asignar el icono correcto basado en la detección (Película vs TV)
+                const iconClass = channel.isVod ? 'fa-solid fa-film' : 'fa-solid fa-tv';
                 
                 card.innerHTML = `
+                    <div class="card-icon">
+                        <i class="${iconClass}"></i>
+                    </div>
                     <div class="channel-info">
                         <div class="channel-name">${channel.name}</div>
                         <div class="channel-group">${channel.group}</div>
@@ -139,13 +199,18 @@
                 `;
                 
                 card.onclick = () => {
-                    // Quitar clase activa de todos y ponerla en el actual
                     document.querySelectorAll('.channel-card').forEach(c => c.classList.remove('active'));
                     card.classList.add('active');
-                    playChannel(channel.url);
+                    
+                    // Cambiar temporalmente el icono a "reproduciendo"
+                    const currentIcon = card.querySelector('.card-icon i');
+                    const originalClass = currentIcon.className;
+                    currentIcon.className = 'fa-solid fa-play';
+                    setTimeout(() => { currentIcon.className = originalClass; }, 2000);
+
+                    playChannel(channel.url, channel.isVod);
                 };
 
-                // Soporte para botón "OK" del control remoto
                 card.addEventListener('keypress', function (e) {
                     if (e.key === 'Enter') { card.click(); }
                 });
@@ -154,24 +219,29 @@
             });
         }
 
-        function playChannel(url) {
+        function playChannel(url, isVod) {
             const video = document.getElementById('video');
-            
-            // Destruir instancia anterior de HLS si existe para limpiar memoria
-            if (hlsInstance) { hlsInstance.destroy(); }
+            if (hlsInstance) { 
+                hlsInstance.destroy(); 
+                hlsInstance = null;
+            }
 
-            if (Hls.isSupported()) {
+            if (isVod) {
+                // Si es película (VOD), el navegador la reproduce de forma nativa sin HLS
+                video.src = url;
+                video.play().catch(e => console.log("Esperando interacción del usuario para reproducir."));
+            } else if (Hls.isSupported()) {
+                // Si es canal en vivo, usamos la librería HLS
                 hlsInstance = new Hls();
                 hlsInstance.loadSource(url);
                 hlsInstance.attachMedia(video);
                 hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
+                    video.play().catch(e => console.log("Esperando interacción del usuario para reproducir."));
                 });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            } else {
+                // Fallback para Safari / iOS
                 video.src = url;
-                video.addEventListener('loadedmetadata', function() {
-                    video.play();
-                });
+                video.play();
             }
         }
 
@@ -179,3 +249,4 @@
     </script>
 </body>
 </html>
+
